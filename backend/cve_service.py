@@ -130,12 +130,45 @@ class CVEApiService:
                 if response.status_code == 200:
                     self.log("success", f"API connection test successful using token #{self.current_token_index + 1}")
                     return True
+                elif response.status_code == 401:
+                    self.log("error", f"API authentication failed: Invalid or expired API token (HTTP 401)")
+                    return False
+                elif response.status_code == 403:
+                    self.log("error", f"API access forbidden: Token may not have required permissions (HTTP 403)")
+                    return False
+                elif response.status_code == 429:
+                    self.log("error", f"API rate limit exceeded: Too many requests (HTTP 429)")
+                    return False
                 else:
                     self.log("error", f"API connection failed: HTTP {response.status_code}")
                     return False
                     
+        except httpx.ConnectTimeout:
+            self.log("error", f"API connection timeout: Could not connect to {self.base_url} within 30 seconds. Check your internet connection.")
+            return False
+        except httpx.ReadTimeout:
+            self.log("error", f"API read timeout: Server did not respond within 30 seconds.")
+            return False
+        except httpx.ConnectError as e:
+            error_msg = str(e).lower()
+            if "name or service not known" in error_msg or "nodename nor servname provided" in error_msg or "no address associated with hostname" in error_msg:
+                self.log("error", f"DNS resolution failed: Cannot resolve hostname {self.base_url}. Check your internet connection or DNS settings.")
+            elif "connection refused" in error_msg:
+                self.log("error", f"Connection refused: The API server at {self.base_url} refused the connection. The service may be down.")
+            elif "network is unreachable" in error_msg:
+                self.log("error", f"Network unreachable: Cannot reach {self.base_url}. Check your internet connection.")
+            else:
+                self.log("error", f"Connection error: Unable to connect to API - {str(e)}")
+            return False
         except Exception as e:
-            self.log("error", f"API connection test failed: {str(e)}")
+            error_msg = str(e).lower()
+            # Check for common network-related errors
+            if "name or service not known" in error_msg or "nodename nor servname provided" in error_msg or "no address associated with hostname" in error_msg:
+                self.log("error", f"DNS resolution failed: Cannot resolve hostname {self.base_url}. Check your internet connection or DNS settings.")
+            elif "ssl" in error_msg or "certificate" in error_msg:
+                self.log("error", f"SSL/TLS error: Certificate verification failed - {str(e)}")
+            else:
+                self.log("error", f"API connection test failed: {str(e)}")
             return False
     
     def get_token_status(self) -> Dict[str, Any]:

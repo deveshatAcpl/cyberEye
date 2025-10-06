@@ -712,8 +712,8 @@ if __name__ == "__main__":
     import uvicorn
     
     # SSL configuration
-    ssl_keyfile = os.getenv("SSL_KEYFILE", "./certs/localhost-key.pem")
-    ssl_certfile = os.getenv("SSL_CERTFILE", "./certs/localhost.pem")
+    ssl_keyfile = os.getenv("SSL_KEYFILE")
+    ssl_certfile = os.getenv("SSL_CERTFILE")
     
     # Check if SSL certificates exist
     if os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):

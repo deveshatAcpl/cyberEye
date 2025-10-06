@@ -1,6 +1,6 @@
 import { CVEApiResponse, CVEData, LogEntry } from "@/types/cve";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://localhost:8000";
 
 export class CVEApiService {
   private static instance: CVEApiService;

@@ -73,6 +73,10 @@ logs/
 temp/
 tmp/
 
+# SSL Certificates (generated locally)
+frontend/certs/*.pem
+backend/certs/*.pem
+
 # Coverage reports
 htmlcov/
 .coverage

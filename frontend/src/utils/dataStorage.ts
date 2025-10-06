@@ -1,6 +1,6 @@
 ﻿import { CVEData } from "@/types/cve";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://localhost:8000";
 
 export class DataStorage {
   private static instance: DataStorage;

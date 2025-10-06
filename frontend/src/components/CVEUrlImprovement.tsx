@@ -31,7 +31,8 @@ export function CVEUrlImprovement() {
     try {
       setIsImproving(true);
       
-      const response = await fetch(`http://localhost:8000/api/cve/improve-urls`, {
+      const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://localhost:8000";
+      const response = await fetch(`${BACKEND_URL}/api/cve/improve-urls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

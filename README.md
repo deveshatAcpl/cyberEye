@@ -93,6 +93,12 @@ cd cyberEye/backend
 # Install Python dependencies
 pip install -r requirements.txt
 
+# Generate SSL certificates for HTTPS (required for local development)
+mkdir -p certs
+cd certs
+openssl req -x509 -newkey rsa:2048 -keyout localhost-key.pem -out localhost.pem -days 365 -nodes -subj "/C=US/ST=State/L=City/O=Development/CN=localhost"
+cd ..
+
 # Create environment configuration
 cp .env.example .env
 # Edit .env and add your CVE_API_TOKEN
@@ -101,12 +107,19 @@ cp .env.example .env
 python main.py
 ```
 
-The backend API will be available at `http://localhost:8000`
+The backend API will be available at `https://localhost:8000`
+
+**Note**: Your browser will show a security warning for the self-signed certificate. This is expected for local development. Click "Advanced" and proceed to localhost.
 
 ### Frontend Setup
 ```bash
 # Navigate to frontend directory
 cd ../frontend
+
+# Copy SSL certificates from backend (if not already present)
+mkdir -p certs
+cp ../backend/certs/localhost-key.pem certs/
+cp ../backend/certs/localhost.pem certs/
 
 # Install Node.js dependencies
 npm install
@@ -115,7 +128,9 @@ npm install
 npm run dev
 ```
 
-The frontend application will be available at `http://localhost:8080`
+The frontend application will be available at `https://localhost:8080`
+
+**Note**: Accept the browser's security warning to proceed with the self-signed certificate.
 
 ### Production Build
 ```bash
@@ -132,7 +147,7 @@ npm run preview
 ### Starting the Application
 1. **Start Backend**: `cd backend && python main.py`
 2. **Start Frontend**: `cd frontend && npm run dev`
-3. **Access Dashboard**: Open `http://localhost:8080` in your browser
+3. **Access Dashboard**: Open `https://localhost:8080` in your browser (accept the self-signed certificate warning)
 
 ### Basic Operations
 
@@ -161,7 +176,106 @@ The backend provides these key endpoints:
 - `GET /api/data/export` - Export all data
 - `POST /api/data/import` - Import data from JSON
 
-Full API documentation is available at `http://localhost:8000/docs` when the backend is running.
+Full API documentation is available at `https://localhost:8000/docs` when the backend is running.
+
+## HTTPS Configuration
+
+CyberEye uses HTTPS for secure communication between the frontend and backend. This section explains the HTTPS setup and configuration.
+
+### SSL Certificates for Local Development
+
+The application uses self-signed SSL certificates for local development. These certificates are not committed to the repository and must be generated locally.
+
+#### Generating SSL Certificates
+
+1. **Generate certificates** (run this once per development machine):
+
+```bash
+# For backend
+cd backend
+mkdir -p certs
+cd certs
+openssl req -x509 -newkey rsa:2048 -keyout localhost-key.pem -out localhost.pem -days 365 -nodes -subj "/C=US/ST=State/L=City/O=Development/CN=localhost"
+
+# For frontend (copy from backend)
+cd ../../frontend
+mkdir -p certs
+cp ../backend/certs/localhost-key.pem certs/
+cp ../backend/certs/localhost.pem certs/
+```
+
+2. **Certificate files** created:
+   - `localhost-key.pem` - Private key (never commit this)
+   - `localhost.pem` - Public certificate
+
+### Environment Configuration
+
+#### Frontend Environment (`.env`)
+
+The frontend uses environment variables to configure the API base URL:
+
+```bash
+VITE_API_BASE_URL=https://localhost:8000
+```
+
+#### Backend Environment (`.env`)
+
+The backend configuration includes SSL certificate paths:
+
+```bash
+SSL_KEYFILE=./certs/localhost-key.pem
+SSL_CERTFILE=./certs/localhost.pem
+CORS_ORIGINS=https://localhost:8080,http://localhost:8080
+```
+
+### Browser Security Warnings
+
+Since we use self-signed certificates for development, browsers will show security warnings. This is **expected and safe for local development**.
+
+**To proceed past the warning:**
+- **Chrome/Edge**: Click "Advanced" → "Proceed to localhost (unsafe)"
+- **Firefox**: Click "Advanced" → "Accept the Risk and Continue"
+- **Safari**: Click "Show Details" → "visit this website"
+
+### Production Deployment
+
+For production environments:
+
+1. **Obtain proper SSL certificates** from a trusted Certificate Authority:
+   - Let's Encrypt (free, automated)
+   - DigiCert, Sectigo, or other commercial CAs
+
+2. **Configure a reverse proxy** (recommended):
+   - Use nginx or Apache as a reverse proxy
+   - Handle SSL termination at the proxy level
+   - Forward traffic to the backend application
+
+3. **Update environment variables**:
+   - Set `CORS_ORIGINS` to your production domain
+   - Update `VITE_API_BASE_URL` to your production API URL
+
+4. **Security considerations**:
+   - Use strong cipher suites
+   - Enable HSTS (HTTP Strict Transport Security)
+   - Configure proper security headers
+   - Regularly update and renew certificates
+
+### Troubleshooting HTTPS Issues
+
+**Backend won't start with HTTPS:**
+- Ensure SSL certificate files exist in `backend/certs/`
+- Check file permissions (key file should be readable)
+- Verify paths in `.env` are correct
+
+**Frontend can't connect to backend:**
+- Verify both services are using HTTPS
+- Check that `VITE_API_BASE_URL` in frontend `.env` is correct
+- Ensure CORS origins in backend `.env` include the frontend URL
+- Accept the certificate warning in your browser for both URLs
+
+**Certificate expired:**
+- Regenerate certificates using the OpenSSL command above
+- Self-signed certificates are valid for 365 days by default
 
 ## Contributing
 

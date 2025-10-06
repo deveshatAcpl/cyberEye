@@ -710,4 +710,26 @@ async def stop_automation():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    
+    # SSL configuration
+    ssl_keyfile = os.getenv("SSL_KEYFILE", "./certs/localhost-key.pem")
+    ssl_certfile = os.getenv("SSL_CERTFILE", "./certs/localhost.pem")
+    
+    # Check if SSL certificates exist
+    if os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):
+        print(f"🔒 Starting server with HTTPS on port 8000")
+        print(f"   SSL Key: {ssl_keyfile}")
+        print(f"   SSL Cert: {ssl_certfile}")
+        uvicorn.run(
+            app, 
+            host="0.0.0.0", 
+            port=8000, 
+            log_level="info",
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
+        )
+    else:
+        print(f"⚠️  SSL certificates not found. Starting with HTTP on port 8000")
+        print(f"   Expected key: {ssl_keyfile}")
+        print(f"   Expected cert: {ssl_certfile}")
+        uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

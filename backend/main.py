@@ -64,11 +64,24 @@ async def test_cve_api():
     try:
         is_connected = await cve_service.test_connection()
         
-        return ApiStatus(
-            status="connected" if is_connected else "error",
-            message="API connection successful" if is_connected else "API connection failed",
-            lastTested=datetime.now().isoformat()
-        )
+        # Get the last log entry for detailed error information
+        logs = cve_service.get_logs()
+        last_log = logs[-1] if logs else None
+        
+        if is_connected:
+            return ApiStatus(
+                status="connected",
+                message="API connection successful",
+                lastTested=datetime.now().isoformat()
+            )
+        else:
+            # Provide detailed error message from logs
+            error_detail = last_log.message if last_log and last_log.type == "error" else "API connection failed"
+            return ApiStatus(
+                status="error",
+                message=error_detail,
+                lastTested=datetime.now().isoformat()
+            )
     except Exception as e:
         return ApiStatus(
             status="error",

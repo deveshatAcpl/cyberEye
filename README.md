@@ -277,6 +277,60 @@ For production environments:
 - Regenerate certificates using the OpenSSL command above
 - Self-signed certificates are valid for 365 days by default
 
+### Troubleshooting API Connection Issues
+
+If you see "API Connection Failed" errors, here are common causes and solutions:
+
+**"DNS resolution failed" or "Cannot resolve hostname":**
+- **Cause**: Your system cannot reach www.cvedetails.com
+- **Solution**: 
+  - Check your internet connection
+  - Try accessing https://www.cvedetails.com in your browser
+  - Check if your network has DNS issues
+  - If behind a corporate firewall, contact your IT department
+
+**"Connection refused" or "Network unreachable":**
+- **Cause**: Network firewall or proxy is blocking the connection
+- **Solution**:
+  - Check firewall settings to allow connections to cvedetails.com
+  - Configure proxy settings if you're behind a corporate proxy
+  - Try disabling VPN temporarily to test if it's the cause
+
+**"API authentication failed" (HTTP 401):**
+- **Cause**: Invalid or expired API token
+- **Solution**:
+  - Verify your `CVE_API_TOKEN` in the `.env` file
+  - Get a new API token from https://www.cvedetails.com/api/
+  - Ensure the token is not expired
+
+**"API rate limit exceeded" (HTTP 429):**
+- **Cause**: Too many API requests in a short time
+- **Solution**:
+  - Wait 5-10 minutes before trying again
+  - The application has built-in token rotation - add more tokens:
+    ```bash
+    CVE_API_TOKEN=your_token_1
+    CVE_API_TOKEN_1=your_token_2
+    CVE_API_TOKEN_2=your_token_3
+    ```
+
+**"Connection timeout":**
+- **Cause**: Slow network or API server not responding
+- **Solution**:
+  - Check your internet speed
+  - Try again after a few minutes
+  - Check https://www.cvedetails.com/api-documentation/ for API status
+
+**Testing API Connection:**
+```bash
+# Test if you can reach the API
+curl -v https://www.cvedetails.com/api/v1/vulnerability/search
+
+# Test with your API token
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "https://www.cvedetails.com/api/v1/vulnerability/search?vendorName=Microsoft&resultsPerPage=1"
+```
+
 ## Contributing
 
 We welcome contributions to CyberEye! Here's how you can help:

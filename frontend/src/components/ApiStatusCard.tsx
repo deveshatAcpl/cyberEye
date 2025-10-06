@@ -20,12 +20,14 @@ export function ApiStatusCard() {
   const [apiStatus, setApiStatus] = useState<'unknown' | 'connected' | 'error' | 'cors-error'>('unknown');
   const [loading, setLoading] = useState(false);
   const [lastTestTime, setLastTestTime] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string>('');
 
   const { toast } = useToast();
   const apiService = CVEApiService.getInstance();
 
   const testApiConnection = async () => {
     setLoading(true);
+    setErrorDetails('');
     try {
       const isConnected = await apiService.testApiConnection();
       setApiStatus(isConnected ? 'connected' : 'error');
@@ -37,9 +39,16 @@ export function ApiStatusCard() {
           description: "CVE Details API is accessible and working correctly",
         });
       } else {
+        // Fetch backend logs to get detailed error information
+        const logs = await apiService.fetchBackendLogs();
+        const lastErrorLog = logs.reverse().find(log => log.type === 'error');
+        const errorMessage = lastErrorLog?.message || "Unable to connect to CVE Details API";
+        
+        setErrorDetails(errorMessage);
+        
         toast({
           title: "API Connection Failed",
-          description: "Unable to connect to CVE Details API. Using mock data for demonstration.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -55,6 +64,7 @@ export function ApiStatusCard() {
         });
       } else {
         setApiStatus('error');
+        setErrorDetails(errorMessage);
         toast({
           title: "API Test Error",
           description: `Error testing API: ${errorMessage}`,
@@ -91,7 +101,7 @@ export function ApiStatusCard() {
           icon: <XCircle className="h-5 w-5 text-red-500" />,
           badge: <Badge variant="destructive">Error</Badge>,
           title: "API Error",
-          description: "Unable to connect to the CVE Details API. Check network connectivity."
+          description: errorDetails || "Unable to connect to the CVE Details API. Check network connectivity."
         };
       default:
         return {
@@ -168,6 +178,42 @@ export function ApiStatusCard() {
                 >
                   <ExternalLink className="h-3 w-3 mr-1" />
                   API Documentation
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {apiStatus === 'error' && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Troubleshooting Guide</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p className="text-sm">
+                Common causes and solutions:
+              </p>
+              <div className="space-y-1 text-xs">
+                <ul className="list-disc ml-4 space-y-1">
+                  <li><strong>DNS/Network Issue:</strong> Check your internet connection. Try accessing https://www.cvedetails.com in your browser.</li>
+                  <li><strong>Firewall/Proxy:</strong> Ensure your firewall or corporate proxy allows connections to cvedetails.com</li>
+                  <li><strong>Invalid API Token:</strong> Verify your API token in the backend .env file is valid and not expired</li>
+                  <li><strong>API Service Down:</strong> Check https://www.cvedetails.com/api-documentation/ to see if the service is operational</li>
+                  <li><strong>Rate Limiting:</strong> Wait a few minutes if you've made too many requests</li>
+                </ul>
+              </div>
+              {errorDetails && (
+                <div className="mt-2 p-2 bg-muted rounded text-xs font-mono">
+                  <strong>Error Details:</strong> {errorDetails}
+                </div>
+              )}
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('https://www.cvedetails.com/api-documentation/', '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Check API Status
                 </Button>
               </div>
             </AlertDescription>

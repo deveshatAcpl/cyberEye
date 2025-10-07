@@ -5,6 +5,7 @@ import asyncio
 import re
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from models import (
     CVEData, CVEApiResponse, LogEntry, SeverityEnum, ImplementationTargets, 
     AutomationProgress, VendorProgress, TokenStatus, AutomationConfig, VENDORS
@@ -29,6 +30,14 @@ class CVEApiService:
         for token in self.api_tokens:
             self.token_retry_counts[token] = 0
             self.token_cooldown[token] = None
+    
+    def _extract_hostname(self, url: str) -> str:
+        """Extract hostname from URL for clearer error messages"""
+        try:
+            parsed = urlparse(url)
+            return parsed.netloc if parsed.netloc else url
+        except:
+            return url
     
     def _load_api_tokens(self, primary_token: str) -> List[str]:
         """Load all available API tokens from environment variables"""
@@ -119,6 +128,8 @@ class CVEApiService:
             self.log("error", "No API tokens available for testing")
             return False
         
+        hostname = self._extract_hostname(self.base_url)
+        
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
@@ -131,42 +142,42 @@ class CVEApiService:
                     self.log("success", f"API connection test successful using token #{self.current_token_index + 1}")
                     return True
                 elif response.status_code == 401:
-                    self.log("error", f"API authentication failed: Invalid or expired API token (HTTP 401)")
+                    self.log("error", f"API authentication failed: Invalid or expired API token (HTTP 401). Please check your CVE_API_TOKEN in .env file.")
                     return False
                 elif response.status_code == 403:
-                    self.log("error", f"API access forbidden: Token may not have required permissions (HTTP 403)")
+                    self.log("error", f"API access forbidden: Token may not have required permissions (HTTP 403). Verify your API token is active.")
                     return False
                 elif response.status_code == 429:
-                    self.log("error", f"API rate limit exceeded: Too many requests (HTTP 429)")
+                    self.log("error", f"API rate limit exceeded: Too many requests (HTTP 429). Please wait before trying again.")
                     return False
                 else:
-                    self.log("error", f"API connection failed: HTTP {response.status_code}")
+                    self.log("error", f"API connection failed: HTTP {response.status_code}. Please check API status at www.cvedetails.com")
                     return False
                     
         except httpx.ConnectTimeout:
-            self.log("error", f"API connection timeout: Could not connect to {self.base_url} within 30 seconds. Check your internet connection.")
+            self.log("error", f"Connection timeout: Could not connect to {hostname} within 30 seconds. Check your internet connection and firewall settings.")
             return False
         except httpx.ReadTimeout:
-            self.log("error", f"API read timeout: Server did not respond within 30 seconds.")
+            self.log("error", f"Read timeout: Server at {hostname} did not respond within 30 seconds. The API service may be experiencing issues.")
             return False
         except httpx.ConnectError as e:
             error_msg = str(e).lower()
             if "name or service not known" in error_msg or "nodename nor servname provided" in error_msg or "no address associated with hostname" in error_msg:
-                self.log("error", f"DNS resolution failed: Cannot resolve hostname {self.base_url}. Check your internet connection or DNS settings.")
+                self.log("error", f"DNS resolution failed: Cannot resolve hostname {hostname}. Check your internet connection and DNS settings.")
             elif "connection refused" in error_msg:
-                self.log("error", f"Connection refused: The API server at {self.base_url} refused the connection. The service may be down.")
+                self.log("error", f"Connection refused: The API server at {hostname} refused the connection. The service may be down or blocked by your firewall.")
             elif "network is unreachable" in error_msg:
-                self.log("error", f"Network unreachable: Cannot reach {self.base_url}. Check your internet connection.")
+                self.log("error", f"Network unreachable: Cannot reach {hostname}. Check your internet connection and network configuration.")
             else:
-                self.log("error", f"Connection error: Unable to connect to API - {str(e)}")
+                self.log("error", f"Connection error: Unable to connect to {hostname} - {str(e)}")
             return False
         except Exception as e:
             error_msg = str(e).lower()
             # Check for common network-related errors
             if "name or service not known" in error_msg or "nodename nor servname provided" in error_msg or "no address associated with hostname" in error_msg:
-                self.log("error", f"DNS resolution failed: Cannot resolve hostname {self.base_url}. Check your internet connection or DNS settings.")
+                self.log("error", f"DNS resolution failed: Cannot resolve hostname {hostname}. Check your internet connection and DNS settings.")
             elif "ssl" in error_msg or "certificate" in error_msg:
-                self.log("error", f"SSL/TLS error: Certificate verification failed - {str(e)}")
+                self.log("error", f"SSL/TLS error: Certificate verification failed for {hostname}. This may be caused by an outdated SSL certificate or man-in-the-middle proxy.")
             else:
                 self.log("error", f"API connection test failed: {str(e)}")
             return False
